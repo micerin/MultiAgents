@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 智能体沙盒环境
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    volumes:
+      - ../workspace:/home/agent/workspace:rw
+      - ../output:/home/agent/output:rw
+    environment:
+      - PYTHONUNBUFFERED=1
+    # 安全配置
+    security_opt:
+      - no-new-privileges:true
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 网络配置
+    networks:
+      - agent-network
+    # 可选: 完全禁用网络
+    # network_mode: "none"
+
+  # OpenHands 本地部署 (可选)
+  openhands:
+    image: docker.all-hands.dev/all-hands-ai/openhands:0.12
+    ports:
+      - "3000:3000"
+    environment:
+      - SANDBOX_USER_ID=1000
+      - WORKSPACE_BASE=/workspace
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../workspace:/workspace
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - openhands  # 只在明确指定时启动
+
+networks:
+  agent-network:
+    driver: bridge

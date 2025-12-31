@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  critic-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../output:/app/output:rw
+    # 安全配置
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G

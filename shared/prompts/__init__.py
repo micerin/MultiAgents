@@ -1,0 +1,27 @@
+"""Prompts package"""
+
+from .coder_prompts import (
+    CODER_SYSTEM_PROMPT,
+    CODER_TASK_PROMPT,
+    CODER_REVISION_PROMPT,
+)
+from .critic_prompts import (
+    CRITIC_SYSTEM_PROMPT,
+    CRITIC_REVIEW_PROMPT,
+    CODE_QUALITY_RULES,
+    SECURITY_RULES,
+    STYLE_RULES,
+    DOCUMENTATION_RULES,
+)
+
+__all__ = [
+    "CODER_SYSTEM_PROMPT",
+    "CODER_TASK_PROMPT",
+    "CODER_REVISION_PROMPT",
+    "CRITIC_SYSTEM_PROMPT",
+    "CRITIC_REVIEW_PROMPT",
+    "CODE_QUALITY_RULES",
+    "SECURITY_RULES",
+    "STYLE_RULES",
+    "DOCUMENTATION_RULES",
+]
