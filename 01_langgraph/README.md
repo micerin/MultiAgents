@@ -2,6 +2,8 @@
 
 > Graph-based agent orchestration with state management
 
+**✅ 已完成** | 使用 **Azure OpenAI** 作为 LLM 提供商
+
 ## 📖 本周概述
 
 LangGraph 是构建生产级多智能体系统的首选框架，它将智能体工作流视为**图（Graph）**结构，提供：
@@ -24,18 +26,19 @@ LangGraph 是构建生产级多智能体系统的首选框架，它将智能体�
 
 ```
 01_langgraph/
-├── README.md                 # 本文件
+├── README.md                          # 本文件
 ├── 01_basics/
-│   ├── hello_graph.py        # 第一个 LangGraph 程序
-│   ├── state_management.py   # 状态管理详解
-│   └── conditional_edges.py  # 条件边与循环
+│   ├── hello_graph.py                 # ✅ 第一个 LangGraph 程序
+│   ├── state_management.py            # ✅ 状态管理详解
+│   ├── conditional_edges.py           # ✅ 条件边与循环
+│   └── llm_providers_example.py       # ✅ LLM 提供商配置（Azure OpenAI）
 ├── 02_patterns/
-│   ├── planner_worker.py     # Planner-Worker 模式
-│   ├── reflection_loop.py    # 反思循环（Critic 基础）
-│   └── human_in_loop.py      # 人机回环
-└── 03_tools/
-    ├── tool_calling.py       # 工具调用
-    └── code_execution.py     # 代码执行能力
+│   ├── planner_worker.py              # ✅ Planner-Worker 模式
+│   ├── reflection_loop.py             # ✅ 反思循环（Critic 基础）
+│   └── human_in_loop.py               # ✅ 人机回环
+└── 03_advanced/
+    ├── multi_critic_system.py         # ✅ 多维度 Critic 系统
+    └── multi_critic_challenge.py      # ✅ 挑战模式（迭代改进演示）
 ```
 
 ## 🚀 快速开始
@@ -43,13 +46,37 @@ LangGraph 是构建生产级多智能体系统的首选框架，它将智能体�
 ### 安装依赖
 
 ```bash
-pip install langchain langgraph langchain-openai
+pip install langchain langgraph langchain-openai python-dotenv
 ```
 
-### 运行第一个示例
+### 配置 Azure OpenAI
 
 ```bash
+# 复制环境模板
+cp .env.example .env
+
+# 编辑 .env 文件，填入 Azure OpenAI 配置
+AZURE_OPENAI_API_KEY=your-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_API_VERSION=2024-02-01
+```
+
+### 运行示例
+
+```bash
+# 基础示例
 python 01_basics/hello_graph.py
+python 01_basics/state_management.py
+python 01_basics/conditional_edges.py
+
+# 模式示例
+python 02_patterns/planner_worker.py
+python 02_patterns/reflection_loop.py
+
+# 高级 Critic 系统（使用真实 LLM）
+python 03_advanced/multi_critic_system.py
+python 03_advanced/multi_critic_challenge.py
 ```
 
 ## 📚 核心概念
@@ -120,11 +147,47 @@ app = graph.compile(checkpointer=memory)
 | 学习曲线 | 较陡峭 | 中等 | 平缓 |
 | 生产就绪 | ✅ | ⚠️ | ⚠️ |
 
+## 🎓 已完成示例详解
+
+### 基础 (01_basics/)
+
+| 文件 | 学到的概念 |
+|------|------------|
+| `hello_graph.py` | StateGraph, add_node, add_edge, compile |
+| `state_management.py` | TypedDict, Annotated, operator.add (累加器) |
+| `conditional_edges.py` | 多分支路由, 循环控制, 错误重试 |
+| `llm_providers_example.py` | Azure OpenAI, LangChain 集成 |
+
+### 模式 (02_patterns/)
+
+| 文件 | 学到的概念 |
+|------|------------|
+| `planner_worker.py` | 任务分解 → 执行 → 综合 |
+| `reflection_loop.py` | Writer → Critic → 修改循环 |
+| `human_in_loop.py` | interrupt_before, checkpointing |
+
+### 高级 (03_advanced/)
+
+| 文件 | 学到的概念 |
+|------|------------|
+| `multi_critic_system.py` | 并行 Critics, 加权评分, 完整审查流程 |
+| `multi_critic_challenge.py` | 故意缺陷代码 → 迭代修复 → 质量提升 |
+
+## 📊 LangGraph 局限性
+
+| 局限 | 说明 |
+|------|------|
+| 静态图结构 | 编译后无法动态添加节点 |
+| 共享状态 | 所有节点必须协商状态结构 |
+| 无直接通信 | Agent 间通过状态传递（非对话式） |
+| 调试困难 | 需要 LangSmith 或手动打印 |
+
 ## 📖 参考资源
 
 - [LangGraph 官方文档](https://python.langchain.com/docs/langgraph)
 - [LangGraph GitHub](https://github.com/langchain-ai/langgraph)
 - [LangSmith](https://smith.langchain.com/) - 用于追踪调试
+- [Azure OpenAI 文档](https://learn.microsoft.com/azure/ai-services/openai/)
 
 ## ⏭️ 下一步
 

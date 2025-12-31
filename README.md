@@ -52,14 +52,14 @@
 
 ## 🎯 学习路径 (Learning Path)
 
-| Week | Topic | Description |
-|------|-------|-------------|
-| 1 | [LangGraph 基础](./01_langgraph/) | Graph-based workflows, state management, conditional edges |
-| 2 | [AutoGen 多智能体](./02_autogen/) | Conversational agents, group chat, code execution |
-| 3 | [Docker 沙盒化](./03_docker_sandbox/) | Secure execution, OpenHands, container orchestration |
-| 4 | [Beads 记忆系统](./04_beads/) | Agent memory, task decomposition, Git integration |
-| 5 | [Critic Agent](./05_critic_agent/) | **Core Project** - Build a code review agent system |
-| 6 | [评估与可观测性](./06_evaluation/) | Testing, metrics, CI/CD for agents |
+| Week | Topic | Status | Description |
+|------|-------|--------|-------------|
+| 1 | [LangGraph 基础](./01_langgraph/) | ✅ 完成 | Graph-based workflows, state management, conditional edges |
+| 2 | [AutoGen 多智能体](./02_autogen/) | 🔄 进行中 | Conversational agents, group chat, code execution |
+| 3 | [Docker 沙盒化](./03_docker_sandbox/) | ⏳ 待开始 | Secure execution, OpenHands, container orchestration |
+| 4 | [Beads 记忆系统](./04_beads/) | ⏳ 待开始 | Agent memory, task decomposition, Git integration |
+| 5 | [Critic Agent](./05_critic_agent/) | ⏳ 待开始 | **Core Project** - Build a code review agent system |
+| 6 | [评估与可观测性](./06_evaluation/) | ⏳ 待开始 | Testing, metrics, CI/CD for agents |
 
 ---
 
@@ -69,7 +69,7 @@
 
 - Python 3.10 或更高版本
 - Docker Desktop（用于沙盒化）
-- OpenAI API密钥或其他LLM提供商
+- **Azure OpenAI** 或 OpenAI API 密钥
 
 ### 安装步骤
 
@@ -92,7 +92,22 @@ pip install -r requirements.txt
 
 # 复制环境模板
 cp .env.example .env
-# 编辑 .env 文件，填入您的API密钥
+# 编辑 .env 文件，填入您的 Azure OpenAI 配置
+```
+
+### 配置 Azure OpenAI
+
+本教程使用 **Azure OpenAI** 作为默认 LLM 提供商。在 `.env` 文件中配置：
+
+```bash
+# Azure OpenAI（推荐）
+AZURE_OPENAI_API_KEY=your-azure-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_API_VERSION=2024-02-01
+
+# 或使用 OpenAI（可选）
+# OPENAI_API_KEY=your-openai-key
 ```
 
 ### 运行第一个智能体
