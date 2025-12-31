@@ -2,6 +2,8 @@
 
 > Conversational multi-agent systems with flexible topology
 
+**使用 AutoGen 0.4+ 新 API** | **Azure OpenAI**
+
 ## 📖 本周概述
 
 Microsoft AutoGen 是一个强大的对话式多智能体框架，特别适合：
@@ -11,11 +13,22 @@ Microsoft AutoGen 是一个强大的对话式多智能体框架，特别适合�
 - **灵活拓扑** - 支持多种智能体交互模式
 - **群聊模式** - 多智能体同时参与讨论
 
+## 🆚 AutoGen vs LangGraph
+
+| 特性 | AutoGen | LangGraph |
+|------|---------|-----------|
+| 编排方式 | 对话驱动 | 图结构驱动 |
+| 通信方式 | 直接消息传递 | 共享状态 |
+| 控制流 | 隐式/动态 | 显式/确定性 |
+| 代码量 | 较少 | 较多 |
+| 灵活性 | 高 | 中 |
+| 可预测性 | 低 | 高 |
+
 ## 🎯 学习目标
 
 完成本周学习后，你将能够：
 
-1. 创建 `ConversableAgent` 和 `UserProxyAgent`
+1. 使用 AutoGen 0.4+ 新 API 创建 Agent
 2. 实现双智能体对话和群聊
 3. 构建 Critic Pattern（批评家模式）
 4. 理解 AutoGen 与 LangGraph 的差异
@@ -24,17 +37,15 @@ Microsoft AutoGen 是一个强大的对话式多智能体框架，特别适合�
 
 ```
 02_autogen/
-├── README.md                 # 本文件
+├── README.md                          # 本文件
 ├── 01_basics/
-│   ├── two_agent_chat.py     # 双智能体对话
-│   ├── group_chat.py         # 群聊模式
-│   └── code_executor.py      # 代码执行
+│   ├── hello_autogen.py               # ✅ 第一个 AutoGen 程序
+│   └── two_agent_chat.py              # ✅ 双智能体对话（Writer + Critic）
 ├── 02_patterns/
-│   ├── user_proxy_pattern.py # UserProxy + Assistant 模式
-│   ├── critic_pattern.py     # 批评家模式 ⭐
-│   └── nested_chat.py        # 嵌套对话
+│   ├── group_chat.py                  # ✅ 群聊模式（Planner + Coder + Reviewer）
+│   └── critic_pattern.py              # ✅ Critic 模式 + AutoGen vs LangGraph 对比
 └── 03_advanced/
-    └── custom_agents.py      # 自定义智能体
+    └── (coming soon)
 ```
 
 ## 🚀 快速开始
@@ -42,120 +53,100 @@ Microsoft AutoGen 是一个强大的对话式多智能体框架，特别适合�
 ### 安装依赖
 
 ```bash
-pip install pyautogen
+pip install autogen-agentchat autogen-ext[openai]
 ```
 
-### 运行第一个示例
+### 运行示例
 
 ```bash
+# 基础
+python 01_basics/hello_autogen.py
 python 01_basics/two_agent_chat.py
+
+# 模式
+python 02_patterns/group_chat.py
+python 02_patterns/critic_pattern.py
 ```
 
-## 📚 核心概念
+## 📚 核心概念（AutoGen 0.4+）
 
-### 1. 基础智能体类型
+### 1. 模型客户端（Azure OpenAI）
 
 ```python
-from autogen import ConversableAgent, UserProxyAgent, AssistantAgent
+from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
-# 助手智能体（使用 LLM）
-assistant = AssistantAgent(
+model_client = AzureOpenAIChatCompletionClient(
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    azure_deployment="gpt-4o",
+    api_version="2024-02-01",
+    model="gpt-4o",
+)
+```
+
+### 2. AssistantAgent
+
+```python
+from autogen_agentchat.agents import AssistantAgent
+
+agent = AssistantAgent(
     name="assistant",
-    llm_config={"model": "gpt-4"}
-)
-
-# 用户代理（可执行代码）
-user_proxy = UserProxyAgent(
-    name="user_proxy",
-    human_input_mode="NEVER",  # ALWAYS, TERMINATE, NEVER
-    code_execution_config={"work_dir": "coding"}
+    model_client=model_client,
+    system_message="你是一个友好的AI助手。",
 )
 ```
 
-### 2. 双智能体对话
+### 3. 团队协作（RoundRobinGroupChat）
 
 ```python
-# 启动对话
-user_proxy.initiate_chat(
-    assistant,
-    message="Write a Python function to calculate fibonacci numbers."
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.conditions import TextMentionTermination
+
+team = RoundRobinGroupChat(
+    [writer, critic],
+    termination_condition=TextMentionTermination("TERMINATE"),
 )
+result = await team.run(task="写代码...")
 ```
 
-### 3. 群聊模式（GroupChat）
+### 4. 代码执行（CodeExecutorAgent）
 
 ```python
-from autogen import GroupChat, GroupChatManager
+from autogen_agentchat.agents import CodeExecutorAgent
+from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
 
-# 创建多个智能体
-coder = AssistantAgent(name="coder", ...)
-reviewer = AssistantAgent(name="reviewer", ...)
-tester = AssistantAgent(name="tester", ...)
+# 创建本地执行器
+code_executor = LocalCommandLineCodeExecutor(work_dir="/tmp", timeout=60)
 
-# 创建群聊
-groupchat = GroupChat(
-    agents=[user_proxy, coder, reviewer, tester],
-    messages=[],
-    max_round=10
+# 创建执行 Agent
+executor = CodeExecutorAgent(
+    name="Executor",
+    code_executor=code_executor,
 )
-
-manager = GroupChatManager(groupchat=groupchat, llm_config=llm_config)
-user_proxy.initiate_chat(manager, message="Build a REST API")
-```
-
-### 4. Critic Pattern（批评家模式）⭐
-
-```python
-# 编码智能体
-coder = AssistantAgent(
-    name="coder",
-    system_message="You are a Python developer. Write clean, efficient code."
-)
-
-# 批评家智能体
-critic = AssistantAgent(
-    name="critic",
-    system_message="""You are a code reviewer. Review code for:
-    1. Correctness
-    2. Security vulnerabilities
-    3. Code style and best practices
-    4. Performance issues
-    
-    Be specific and actionable in your feedback."""
-)
-
-# 对话流程：Coder -> Critic -> Coder (迭代)
 ```
 
 ## ⚠️ AutoGen 注意事项
 
 ### Token 成本控制
 
-AutoGen 的对话模式可能导致大量 token 消耗：
-
 ```python
-# 设置终止条件
-def termination_check(msg):
-    return "APPROVED" in msg.get("content", "")
+# 使用终止条件限制对话轮数
+from autogen_agentchat.conditions import MaxMessageTermination
 
-assistant = AssistantAgent(
-    name="assistant",
-    is_termination_msg=termination_check,
-    max_consecutive_auto_reply=5  # 限制自动回复次数
-)
+termination = MaxMessageTermination(10)  # 最多 10 条消息
 ```
 
-### 避免无限循环
+### 代码执行安全
+
+```python
+# 开发环境：LocalCommandLineCodeExecutor（快但不安全）
+# 生产环境：DockerCommandLineCodeExecutor（Week 3 详解）
+```
 
 ```python
 # 在群聊中设置最大轮次
 groupchat = GroupChat(
     agents=[...],
-    max_round=10,  # 重要！
-    speaker_selection_method="round_robin"  # 或 "auto", "manual"
-)
-```
-
 ## 🔗 AutoGen vs LangGraph
 
 | 场景 | 推荐框架 |
@@ -167,11 +158,21 @@ groupchat = GroupChat(
 | 快速原型 | AutoGen |
 | 生产部署 | LangGraph |
 
+## 🎓 已完成示例
+
+| 文件 | 功能 | 关键概念 |
+|------|------|----------|
+| `01_basics/hello_autogen.py` | 单 Agent 对话 | AssistantAgent, 模型客户端 |
+| `01_basics/two_agent_chat.py` | Writer + Critic 对话 | RoundRobinGroupChat, 终止条件 |
+| `02_patterns/group_chat.py` | 三人群聊协作 | SelectorGroupChat, LLM 选择发言者 |
+| `02_patterns/critic_pattern.py` | Critic 模式对比 | AutoGen vs LangGraph 差异 |
+| `02_patterns/code_executor.py` | 本地代码执行 | CodeExecutorAgent, LocalExecutor |
+
 ## 📖 参考资源
 
 - [AutoGen 官方文档](https://microsoft.github.io/autogen/)
 - [AutoGen GitHub](https://github.com/microsoft/autogen)
-- [AutoGen Studio](https://github.com/microsoft/autogen/tree/main/samples/apps/autogen-studio) - 可视化界面
+- [AutoGen 0.4 迁移指南](https://microsoft.github.io/autogen/docs/migration-guide)
 
 ## ⏭️ 下一步
 

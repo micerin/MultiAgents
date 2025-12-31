@@ -1,122 +1,171 @@
 """
-AutoGen Critic Pattern - 批评家模式
-===================================
+AutoGen vs LangGraph - Critic 模式对比
+======================================
 
-展示使用 AutoGen 实现 Coder-Critic 循环：
-1. Coder 生成代码
-2. Critic 审查代码
-3. 迭代直到通过
+展示 AutoGen 和 LangGraph 实现同一任务的差异
+
+AutoGen 方式：对话式，Agent 直接交流
+LangGraph 方式：图驱动，通过共享状态传递
 """
 
-from autogen import AssistantAgent, UserProxyAgent
 import os
+import sys
+import asyncio
 
-# os.environ["OPENAI_API_KEY"] = "your-api-key"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-llm_config = {
-    "model": "gpt-4",
-    "temperature": 0,
-}
+from dotenv import load_dotenv
+load_dotenv()
+
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.conditions import TextMentionTermination, MaxMessageTermination
+from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
 
-def create_critic_agents():
-    """创建 Coder 和 Critic 智能体"""
+def get_model_client():
+    """获取 Azure OpenAI 模型客户端"""
+    return AzureOpenAIChatCompletionClient(
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
+        model="gpt-4o",
+    )
+
+
+async def autogen_critic():
+    """AutoGen 实现的 Critic 模式"""
     
-    # 编码智能体
-    coder = AssistantAgent(
-        name="Coder",
-        system_message="""You are an expert Python developer.
-Write clean, efficient, and well-documented code.
-Follow PEP 8 style guidelines.
-Include type hints and docstrings.
+    print("""
+    ┌─────────────────────────────────────────────────────────────┐
+    │                  AutoGen Critic Pattern                     │
+    │                                                             │
+    │   特点：                                                    │
+    │   • 对话式交互，Agent 直接发消息                            │
+    │   • 动态流程，无需预定义图结构                              │
+    │   • 简洁的 API                                              │
+    │                                                             │
+    │   流程：                                                    │
+    │   User ─message─> Writer ─message─> Critic ─message─> ...  │
+    │                                                             │
+    └─────────────────────────────────────────────────────────────┘
+    """)
+    
+    model_client = get_model_client()
+    
+    writer = AssistantAgent(
+        name="Writer",
+        model_client=model_client,
+        system_message="""你是一个写作助手。
 
-When the Critic approves your code, say 'TERMINATE'.""",
-        llm_config=llm_config,
+任务：根据主题写一段简短的文字（50-100字）。
+- 首次收到主题时，写出初稿
+- 收到批评反馈时，修改文章
+- 当 Critic 说 APPROVED 时，回复 TERMINATE""",
     )
     
-    # 批评家智能体
     critic = AssistantAgent(
         name="Critic",
-        system_message="""You are an expert code reviewer.
-Review the code for:
-1. Correctness - Does it solve the problem?
-2. Code quality - Is it clean and readable?
-3. Security - Any potential vulnerabilities?
-4. Best practices - Does it follow Python conventions?
+        model_client=model_client,
+        system_message="""你是一个写作批评家。
 
-Be specific and constructive in your feedback.
-If the code meets all criteria, respond with 'APPROVED'.
-Otherwise, list specific issues to fix.""",
-        llm_config=llm_config,
+任务：评审 Writer 的文章。
+标准：
+1. 内容是否清晰
+2. 语言是否流畅
+3. 是否有吸引力
+
+如果满足所有标准，回复：APPROVED
+否则，给出具体改进建议（最多 2 点）。""",
     )
     
-    return coder, critic
-
-
-def create_user_proxy():
-    """创建用户代理"""
-    return UserProxyAgent(
-        name="user_proxy",
-        human_input_mode="NEVER",
-        max_consecutive_auto_reply=0,  # 不自动回复
-        is_termination_msg=lambda x: "TERMINATE" in x.get("content", ""),
-        code_execution_config=False,
-    )
-
-
-def run_critic_loop(task: str):
-    """运行 Critic 循环"""
+    termination = TextMentionTermination("TERMINATE") | MaxMessageTermination(8)
+    team = RoundRobinGroupChat([writer, critic], termination_condition=termination)
     
-    coder, critic = create_critic_agents()
-    user_proxy = create_user_proxy()
+    task = "写一段关于'人工智能与未来'的短文"
     
+    print(f"📋 任务: {task}\n")
     print("=" * 60)
-    print("🔄 Critic Pattern Demo")
-    print("=" * 60)
-    print(f"\n📋 Task: {task}\n")
     
-    # 创建初始消息
-    initial_message = f"""Task: {task}
+    result = await team.run(task=task)
+    
+    print("\n📜 对话过程:")
+    for msg in result.messages:
+        role = msg.source
+        content = msg.content if hasattr(msg, 'content') else str(msg)
+        icon = "👤" if role == "user" else "✍️" if role == "Writer" else "🔍"
+        print(f"\n{icon} {role}:\n{content[:200]}{'...' if len(content) > 200 else ''}")
+    
+    await model_client.close()
+    return len(result.messages)
 
-Please write the code. After writing, the Critic will review it.
-Address any feedback and iterate until the code is approved."""
+
+def print_comparison():
+    """打印 AutoGen vs LangGraph 对比"""
     
-    # 使用嵌套对话模式
-    # Coder 写代码 -> Critic 审查 -> Coder 修改 -> ...
+    print("""
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║              AutoGen vs LangGraph - Critic 模式对比               ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║                                                                   ║
+    ║  ┌─────────────────────┐    ┌─────────────────────┐              ║
+    ║  │      AutoGen        │    │      LangGraph      │              ║
+    ║  ├─────────────────────┤    ├─────────────────────┤              ║
+    ║  │                     │    │                     │              ║
+    ║  │  Writer ←───→ Critic│    │  Writer → State → Critic          ║
+    ║  │    (直接消息)       │    │    (共享状态)       │              ║
+    ║  │                     │    │                     │              ║
+    ║  └─────────────────────┘    └─────────────────────┘              ║
+    ║                                                                   ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║                                                                   ║
+    ║  对比维度           AutoGen              LangGraph                ║
+    ║  ─────────────────────────────────────────────────────────────── ║
+    ║  编排方式           对话驱动              图结构驱动              ║
+    ║  通信方式           直接消息传递          共享状态               ║
+    ║  控制流             隐式/动态             显式/确定性             ║
+    ║  代码量             较少                  较多                   ║
+    ║  调试难度           中等                  较难                   ║
+    ║  灵活性             高                    中                     ║
+    ║  可预测性           低                    高                     ║
+    ║  生产就绪           中等                  高                     ║
+    ║                                                                   ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║                                                                   ║
+    ║  适用场景：                                                       ║
+    ║                                                                   ║
+    ║  AutoGen:                                                         ║
+    ║  • 开放式对话任务                                                 ║
+    ║  • 需要灵活交互的场景                                             ║
+    ║  • 快速原型开发                                                   ║
+    ║                                                                   ║
+    ║  LangGraph:                                                       ║
+    ║  • 固定流程的工作流                                               ║
+    ║  • 需要状态持久化的任务                                           ║
+    ║  • 生产环境部署                                                   ║
+    ║                                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+    """)
+
+
+async def main():
+    print("""
+    ╔══════════════════════════════════════════════════════════════╗
+    ║        🔄 AutoGen vs LangGraph Critic Pattern                ║
+    ╚══════════════════════════════════════════════════════════════╝
+    """)
     
-    def reflection_message(recipient, messages, sender, config):
-        """生成反思消息"""
-        last_msg = messages[-1]["content"]
-        return f"Critic's feedback:\n{last_msg}\n\nPlease revise the code based on this feedback."
+    # 运行 AutoGen 版本
+    msg_count = await autogen_critic()
     
-    # 注册嵌套对话
-    coder.register_nested_chats(
-        [
-            {
-                "recipient": critic,
-                "message": reflection_message,
-                "max_turns": 1,
-                "summary_method": "last_msg",
-            }
-        ],
-        trigger=user_proxy,
-    )
-    
-    # 启动对话
-    user_proxy.initiate_chat(
-        coder,
-        message=initial_message,
-        max_turns=5,  # 最多 5 轮
-    )
-    
+    # 打印对比
     print("\n" + "=" * 60)
-    print("✅ Critic loop completed!")
-
-
-def main():
-    task = "Write a function to validate email addresses using regex"
-    run_critic_loop(task)
+    print_comparison()
+    
+    print(f"\n✅ AutoGen Critic 完成！共 {msg_count} 条消息")
+    print("\n💡 提示: LangGraph 版本请参考 01_langgraph/02_patterns/reflection_loop.py")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

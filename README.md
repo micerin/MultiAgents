@@ -52,14 +52,14 @@
 
 ## 🎯 学习路径 (Learning Path)
 
-| Week | Topic | Status | Description |
-|------|-------|--------|-------------|
-| 1 | [LangGraph 基础](./01_langgraph/) | ✅ 完成 | Graph-based workflows, state management, conditional edges |
-| 2 | [AutoGen 多智能体](./02_autogen/) | 🔄 进行中 | Conversational agents, group chat, code execution |
-| 3 | [Docker 沙盒化](./03_docker_sandbox/) | ⏳ 待开始 | Secure execution, OpenHands, container orchestration |
-| 4 | [Beads 记忆系统](./04_beads/) | ⏳ 待开始 | Agent memory, task decomposition, Git integration |
-| 5 | [Critic Agent](./05_critic_agent/) | ⏳ 待开始 | **Core Project** - Build a code review agent system |
-| 6 | [评估与可观测性](./06_evaluation/) | ⏳ 待开始 | Testing, metrics, CI/CD for agents |
+| Week | Topic | Description |
+|------|-------|-------------|
+| 1 | [LangGraph 基础](./01_langgraph/) | Graph-based workflows, state management, conditional edges |
+| 2 | [AutoGen 多智能体](./02_autogen/) | Conversational agents, group chat, code execution |
+| 3 | [Docker 沙盒化](./03_docker_sandbox/) | Secure execution, OpenHands, container orchestration |
+| 4 | [Beads 记忆系统](./04_beads/) | Agent memory, task decomposition, Git integration |
+| 5 | [Critic Agent](./05_critic_agent/) | **Core Project** - Build a code review agent system |
+| 6 | [评估与可观测性](./06_evaluation/) | Testing, metrics, CI/CD for agents |
 
 ---
 

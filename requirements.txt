@@ -13,11 +13,13 @@ langchain-community>=0.3.0
 langgraph>=0.2.0
 langsmith>=0.1.0
 
-# Microsoft AutoGen
-pyautogen>=0.4.0
+# Microsoft AutoGen 0.4+ (新 API)
+autogen-agentchat>=0.4.0
+autogen-ext[openai]>=0.4.0
+asyncio_atexit>=1.0.0
 
 # CrewAI (optional, for comparison)
-crewai>=0.80.0
+# crewai>=0.80.0  # 暂未使用
 
 # ============================================
 # LLM Providers
